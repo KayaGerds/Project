@@ -684,3 +684,65 @@ def compute_transmission_caroli(energy, eta,HL,VL, HR, VR, HC, VLC, VRC, HD, VLD
   
     transmission= np.trace(t_matrix).real
     return transmission, gl_s, gl_b, gr_s, gr_b, g_C,sigma_L,sigma_R
+
+def SplitHamMoy(H, nL, nR, nF):
+    """
+    Partition Hamiltonian H with block structure:
+    L1 | L2 | C | R1 | R2
+    Device D = L2 | C | R1
+    """
+
+    no = H.shape[0]
+    nC = no - 2*nL - 2*nR - nF
+
+    if nC < 1:
+        print("Setup error: central region size =", nC)
+        print("Use [L | L | C | R | R] setup")
+        return
+
+    # Boundaries
+    b0 = 0
+    b1 = nL
+    b2 = 2*nL
+    b3 = 2*nL + nC
+    b4 = 2*nL + nC + nR
+    b5 = 2*nL + nC + 2*nR
+    b6 = no
+
+    # Left lead onsite (L1)
+    HL = H[b0:b1, b0:b1]
+
+    # L2 → L1 hopping
+    VL = H[b1:b2, b0:b1]
+
+    # Coupling L2 ↔ C
+    VCL = H[b2:b3, b1:b2]   # C → L2
+    VLC = VCL.T.conj()      # L2 → C
+
+    # Central region
+    HC = H[b2:b3, b2:b3]
+
+    # Coupling C ↔ R1
+    VCR = H[b2:b3, b3:b4]   # C → R1
+    VRC = VCR.T.conj()      # R1 → C
+
+    # R1 → R2 hopping
+    VR = H[b3:b4, b4:b5]
+
+    # Right lead onsite (R2)
+    HR = H[b4:b5, b4:b5]
+
+    # Device block
+    rows = np.r_[b1:b4, b5:b6]
+    cols = np.r_[b1:b4, b5:b6]
+
+    HD = H[np.ix_(rows, cols)]
+
+    HF = H[b5:b6, b5:b6]
+
+    # Lead–device couplings
+    VLD = H[b1:b4, b0:b1]   # L1 → device
+    VRD = H[b1:b4, b4:b5]   # device → R2
+
+    # Return in left → right order
+    return HL,VL, HR, VR, HC, VLC, VRC, HD, VLD, VRD, HF
