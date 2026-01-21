@@ -685,6 +685,58 @@ def compute_transmission_caroli(energy, eta,HL,VL, HR, VR, HC, VLC, VRC, HD, VLD
     transmission= np.trace(t_matrix).real
     return transmission, gl_s, gl_b, gr_s, gr_b, g_C,sigma_L,sigma_R
 
+def compute_transmission_caroli_v2(energy, eta,HL,VL, HR, VR, HC, VLC, VRC, HD, VLD, VRD,method=1 ):
+    """
+    Computes transmission T(E) based on the formulas:
+    Sigma_L = V_LD.dag @ g_L @ V_LD
+    Sigma_R = V_RD @ g_R @ V_RD.dag
+    T(E) = Trace[Gamma_R @ G_D @ Gamma_L @ G_D_dag]
+    """
+    z = energy + 1j * eta
+
+    # 1. Surface Green's Functions for leads
+    gl_s,gl_b,sigmal_s,sigmal_b = get_surface_greens_function(HL, VL,z)
+    gr_s,gr_b,sigmar_s,sigmar_b = get_surface_greens_function(HR, VR,z)
+
+    if method == 2:
+
+        # Infer sizes from blocks
+        nL = HL.shape[0]
+        nR = HR.shape[0]
+        nC = HC.shape[0]
+        dim = nL+nC+nR # of bottom device part
+        
+
+        nD = HD.shape[0]
+        I = np.eye(nD, dtype=complex)
+
+        h_eff = HD.astype(complex).copy()
+        
+        sigma_L = sigmal_s
+        sigma_R = sigmar_s
+
+
+        h_eff[0:nL, 0:nL] += sigma_L
+
+        h_eff[nL + nC:dim, nL + nC:dim] += sigma_R #
+
+        g = np.linalg.inv(z * I - h_eff)
+
+        gamma_L = np.zeros((nD, nD), dtype=complex)
+        gamma_R = np.zeros((nD, nD), dtype=complex)
+
+        gamma_L[0:nL, 0:nL] = 1j * (sigma_L - sigma_L.T.conj())
+        gamma_R[nL + nC:dim, nL + nC:dim] = 1j * (sigma_R - sigma_R.T.conj())
+
+        g_C = g
+        t_matrix = gamma_R @ g_C @ gamma_L @ g.T.conj()
+
+        
+    # 5. Transmission T(E) = Trace[Gamma_R @ G_D @ Gamma_L @ G_D_dag]
+  
+    transmission= np.trace(t_matrix).real
+    return transmission, gl_s, gl_b, gr_s, gr_b, g_C,sigma_L,sigma_R
+
 def SplitHamMoy(H, nL, nR, nF):
     """
     Partition Hamiltonian H with block structure:
