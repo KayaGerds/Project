@@ -741,7 +741,8 @@ def SplitHamMoy(H, nL, nR, nF):
     """
     Partition Hamiltonian H with block structure:
     L1 | L2 | C | R1 | R2
-    Device D = L2 | C | R1
+            |top|
+    Device D = L2 | C | R1|top
     """
 
     no = H.shape[0]
